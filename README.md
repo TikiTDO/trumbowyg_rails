@@ -17,7 +17,7 @@ Installation
 
         //= require trumbowyg/trumbowyg
 
-   *Optional* Include any supported language packs:
+   *Optional* - Include any supported language packs:
 
         //= require trumbowyg/lang/fr
 
