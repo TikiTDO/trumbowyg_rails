@@ -29,6 +29,7 @@ Update Instructions
 2. Run `npm install` to install Trumbowyg dependencies
 3. Run `gulb sprites` to generate the sprite files
 4. Copy as follows from Trumbowyg => trumbowyg_rails
+
         /dist/ui/images/* => /vendor/assets/images/trumbowyg/images
         /src/ui/sass/* => /vendor/assets/stylesheets/trumbowyg
         /src/trumbowyg.js => /vendor/assets/javascripts/trumbowyg
