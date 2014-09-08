@@ -17,7 +17,7 @@ Installation
 
         //= require trumbowyg/trumbowyg
 
-   *Optional* - Include any supported language packs:
+   *Optional* - Include any supported language packs from [this list](https://github.com/TikiTDO/trumbowyg_rails/tree/master/vendor/assets/javascripts/trumbowyg/langs):
 
         //= require trumbowyg/lang/fr
 
