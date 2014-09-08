@@ -10,17 +10,17 @@ Installation
 
 1. Configure your Gemfile to use this gem:
 
-    gem 'trumbowyg_rails'
+        gem 'trumbowyg_rails'
 
 
 2. Require the JavaScript files in `app/assets/javascripts`, after jQuery:
 
-    //= require trumbowyg/trumbowyg
+        //= require trumbowyg/trumbowyg
 
 
 3. Require the Stylesheets in `app/assets/stylesheets`:
 
-    *= require trumbowyg/trumbowyg
+        *= require trumbowyg/trumbowyg
 
 Update Instructions
 ===================
@@ -29,7 +29,7 @@ Update Instructions
 2. Run `npm install` to install Trumbowyg dependencies
 3. Run `gulb sprites` to generate the sprite files
 4. Copy as follows from Trumbowyg => trumbowyg_rails
-    /dist/ui/images/* => /vendor/assets/images/trumbowyg/images
-    /src/ui/sass/* => /vendor/assets/stylesheets/trumbowyg
-    /src/trumbowyg.js => /vendor/assets/javascripts/trumbowyg
-    /str/langs/* => /vendor/assets/javascripts/trumbowyg
+        /dist/ui/images/* => /vendor/assets/images/trumbowyg/images
+        /src/ui/sass/* => /vendor/assets/stylesheets/trumbowyg
+        /src/trumbowyg.js => /vendor/assets/javascripts/trumbowyg
+        /str/langs/* => /vendor/assets/javascripts/trumbowyg
