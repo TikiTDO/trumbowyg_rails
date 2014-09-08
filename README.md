@@ -17,6 +17,9 @@ Installation
 
         //= require trumbowyg/trumbowyg
 
+   *Optional*: Include any supported language packs
+
+        //= require trumbowyg/lang/fr
 
 3. Require the Stylesheets in `app/assets/stylesheets`:
 
