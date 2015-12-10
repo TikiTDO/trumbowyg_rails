@@ -28,7 +28,7 @@ jQuery.trumbowyg.langs.pt = {
     del:            "Apagar",
 
     unorderedList:  "Lista não ordenada",
-    orderedList:    "Liste ordenada",
+    orderedList:    "Lista ordenada",
 
     insertImage:    "Inserir imagem",
     insertVideo:    "Inserir vídeo",
