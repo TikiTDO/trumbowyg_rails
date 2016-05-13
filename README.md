@@ -1,23 +1,25 @@
-TrumbowygRails
+Trumbowyg2Rails
 ==============
 
 Rails asset wrapper for [Trumbowyg](https://github.com/Alex-D/Trumbowyg)
 
-Currently tracking code as of [this change](https://github.com/Alex-D/Trumbowyg/tree/e6cdc17a8c3ee341e724153ecb3da2bd9c845060).
+This is fork of [trumbowyg_rails](https://github.com/TikiTDO/trumbowyg_rails), because that repository has not been updated a lot of time.
+
+Currently tracking code as of [this change](https://github.com/Alex-D/Trumbowyg/tree/ec11c334d93316f82b6f65ece6f6cfc5af04ca46).
 
 Installation
 ============
 
 1. Configure your Gemfile to use this gem:
 
-        gem 'trumbowyg_rails'
+        gem 'trumbowyg2-rails'
 
 
 2. Require the JavaScript files in `app/assets/javascripts`, after jQuery:
 
         //= require trumbowyg/trumbowyg
 
-   *Optional* - Include any supported language packs from [this list](https://github.com/TikiTDO/trumbowyg_rails/tree/master/vendor/assets/javascripts/trumbowyg/langs):
+   *Optional* - Include any supported language packs from [this list](https://github.com/snvl1993/trumbowyg2-rails/tree/master/vendor/assets/javascripts/trumbowyg/langs):
 
         //= require trumbowyg/langs/fr
 
@@ -32,10 +34,10 @@ In order to sync this repository with the upstream provider use the following wo
 
 1. Check out latest copy of parent repository
 2. Run `npm install` to install Trumbowyg dependencies
-3. Run `gulp sprites` to generate the sprite files
-4. Copy as follows from `Trumbowyg` => `trumbowyg_rails`
+3. Run `gulp build` to generate the sprite files
+4. Copy as follows from `Trumbowyg` => `trumbowyg2-rails`
 
         /dist/ui/images/* => /vendor/assets/images/trumbowyg/images
         /src/ui/sass/* => /vendor/assets/stylesheets/trumbowyg
         /src/trumbowyg.js => /vendor/assets/javascripts/trumbowyg
-        /str/langs/* => /vendor/assets/javascripts/trumbowyg
+        /src/langs/* => /vendor/assets/javascripts/trumbowyg

@@ -1,99 +1,111 @@
-﻿jQuery.trumbowyg = {
+jQuery.trumbowyg = {
     langs: {
         en: {
-            viewHTML:       "View HTML",
+            viewHTML: 'View HTML',
 
-            formatting:     "Formatting",
-            p:              "Paragraph",
-            blockquote:     "Quote",
-            code:           "Code",
-            header:         "Header",
+            undo: 'Undo',
+            redo: 'Redo',
 
-            bold:           "Bold",
-            italic:         "Italic",
-            strikethrough:  "Stroke",
-            underline:      "Underline",
+            formatting: 'Formatting',
+            p: 'Paragraph',
+            blockquote: 'Quote',
+            code: 'Code',
+            header: 'Header',
 
-            strong:         "Strong",
-            em:             "Emphasis",
-            del:            "Deleted",
+            bold: 'Bold',
+            italic: 'Italic',
+            strikethrough: 'Stroke',
+            underline: 'Underline',
 
-            unorderedList:  "Unordered list",
-            orderedList:    "Ordered list",
+            strong: 'Strong',
+            em: 'Emphasis',
+            del: 'Deleted',
 
-            insertImage:    "Insert Image",
-            insertVideo:    "Insert Video",
-            link:           "Link",
-            createLink:     "Insert link",
-            unlink:         "Remove link",
+            superscript: 'Superscript',
+            subscript: 'Subscript',
 
-            justifyLeft:    "Align Left",
-            justifyCenter:  "Align Center",
-            justifyRight:   "Align Right",
-            justifyFull:    "Align Justify",
+            unorderedList: 'Unordered list',
+            orderedList: 'Ordered list',
 
-            horizontalRule: "Insert horizontal rule",
+            insertImage: 'Insert Image',
+            link: 'Link',
+            createLink: 'Insert link',
+            unlink: 'Remove link',
 
-            fullscreen:     "fullscreen",
+            justifyLeft: 'Align Left',
+            justifyCenter: 'Align Center',
+            justifyRight: 'Align Right',
+            justifyFull: 'Align Justify',
 
-            close:          "Close",
+            horizontalRule: 'Insert horizontal rule',
+            removeformat: 'Remove format',
 
-            submit:         "Confirm",
-            reset:          "Cancel",
+            fullscreen: 'Fullscreen',
 
-            invalidUrl:     "Invalid URL",
-            required:       "Required",
-            description:    "Description",
-            title:          "Title",
-            text:           "Text"
+            close: 'Close',
+
+            submit: 'Confirm',
+            reset: 'Cancel',
+
+            required: 'Required',
+            description: 'Description',
+            title: 'Title',
+            text: 'Text',
+            target: 'Target'
         }
     },
 
-    // User default options
-    opts: {},
+    // Plugins
+    plugins: {},
 
-    btnsGrps: {
-        design:     ['bold', 'italic', 'underline', 'strikethrough'],
-        semantic:   ['strong', 'em', 'del'],
-        justify:    ['justifyLeft', 'justifyCenter', 'justifyRight', 'justifyFull'],
-        lists:      ['unorderedList', 'orderedList']
-    }
+    // SVG Path globally
+    svgPath: null
 };
 
 
-
-(function(window, document, $){
+(function (navigator, window, document, $) {
     'use strict';
 
-    // @param : o are options
-    // @param : p are params
-    $.fn.trumbowyg = function(o, p){
-        if(o === Object(o) || !o){
-            return this.each(function(){
-                if(!$(this).data('trumbowyg'))
-                    $(this).data('trumbowyg', new Trumbowyg(this, o));
+    $.fn.trumbowyg = function (options, params) {
+        var trumbowygDataName = 'trumbowyg';
+        if (options === Object(options) || !options) {
+            return this.each(function () {
+                if (!$(this).data(trumbowygDataName)) {
+                    $(this).data(trumbowygDataName, new Trumbowyg(this, options));
+                }
             });
-        } else if(this.length === 1){
+        }
+        if (this.length === 1) {
             try {
-                var t = $(this).data('trumbowyg');
-                switch(o){
+                var t = $(this).data(trumbowygDataName);
+                switch (options) {
+                    // Exec command
+                    case 'execCmd':
+                        return t.execCmd(params.cmd, params.param, params.forceCss);
+
                     // Modal box
                     case 'openModal':
-                        return t.openModal(p.title, p.content);
+                        return t.openModal(params.title, params.content);
                     case 'closeModal':
                         return t.closeModal();
                     case 'openModalInsert':
-                        return t.openModalInsert(p.title, p.fields, p.callback);
+                        return t.openModalInsert(params.title, params.fields, params.callback);
 
-                    // Selection
-                    case 'saveSelection':
-                        return t.saveSelection();
-                    case 'getSelection':
-                        return t.selection;
-                    case 'getSelectedText':
-                        return t.selection+'';
-                    case 'restoreSelection':
-                        return t.restoreSelection();
+                    // Range
+                    case 'saveRange':
+                        return t.saveRange();
+                    case 'getRange':
+                        return t.range;
+                    case 'getRangeText':
+                        return t.getRangeText();
+                    case 'restoreRange':
+                        return t.restoreRange();
+
+                    // Enable/disable
+                    case 'enable':
+                        return t.toggleDisable(false);
+                    case 'disable':
+                        return t.toggleDisable(true);
 
                     // Destroy
                     case 'destroy':
@@ -103,181 +115,326 @@
                     case 'empty':
                         return t.empty();
 
-                    // Public options
-                    case 'lang':
-                        return t.lang;
-                    case 'duration':
-                        return t.o.duration;
-
                     // HTML
                     case 'html':
-                        return t.html(p);
+                        return t.html(params);
                 }
-            } catch(e){}
+            } catch (c) {
+            }
         }
 
         return false;
     };
 
+    // @param: editorElem is the DOM element
+    var Trumbowyg = function (editorElem, options) {
+        var t = this,
+            trumbowygIconsId = 'trumbowyg-icons';
 
+        // Get the document of the element. It use to makes the plugin
+        // compatible on iframes.
+        t.doc = editorElem.ownerDocument || document;
 
-    var Trumbowyg = function(editorElem, opts){
-        var t = this;
         // jQuery object of the editor
-        t.$e = $(editorElem);
-        t.$creator = $(editorElem);
+        t.$ta = $(editorElem); // $ta : Textarea
+        t.$c = $(editorElem); // $c : creator
 
-        // Extend with options
-        opts = $.extend(true, {}, opts, $.trumbowyg.opts);
+        options = options || {};
 
         // Localization management
-        if(typeof opts.lang === 'undefined' || typeof $.trumbowyg.langs[opts.lang] === 'undefined')
+        if (options.lang != null || $.trumbowyg.langs[options.lang] != null) {
+            t.lang = $.extend(true, {}, $.trumbowyg.langs.en, $.trumbowyg.langs[options.lang]);
+        } else {
             t.lang = $.trumbowyg.langs.en;
-        else
-            t.lang = $.extend(true, {}, $.trumbowyg.langs.en, $.trumbowyg.langs[opts.lang]);
+        }
+
+        // SVG path
+        var svgPathOption = $.trumbowyg.svgPath != null ? $.trumbowyg.svgPath : options.svgPath;
+        t.hasSvg = svgPathOption !== false;
+        t.svgPath = !!t.doc.querySelector('base') ? window.location : '';
+        if ($('#' + trumbowygIconsId, t.doc).length === 0 && svgPathOption !== false) {
+            if (svgPathOption == null) {
+                try {
+                    throw new Error();
+                } catch (e) {
+                    var stackLines = e.stack.split('\n');
+
+                    for (var i in stackLines) {
+                        if (!stackLines[i].match(/http[s]?:\/\//)) {
+                            continue;
+                        }
+                        svgPathOption = stackLines[Number(i)].match(/((http[s]?:\/\/.+\/)([^\/]+\.js)):/)[1].split('/');
+                        svgPathOption.pop();
+                        svgPathOption = svgPathOption.join('/') + '/ui/icons.svg';
+                        break;
+                    }
+                }
+            }
+
+            var div = t.doc.createElement('div');
+            div.id = trumbowygIconsId;
+            t.doc.body.insertBefore(div, t.doc.body.childNodes[0]);
+            $.get(svgPathOption, function (data) {
+                div.innerHTML = new XMLSerializer().serializeToString(data.documentElement);
+            });
+        }
+
+
+        /**
+         * When the button is associated to a empty object
+         * fn and title attributs are defined from the button key value
+         *
+         * For example
+         *      foo: {}
+         * is equivalent to :
+         *      foo: {
+             *          fn: 'foo',
+             *          title: this.lang.foo
+             *      }
+         */
+        var h = t.lang.header, // Header translation
+            isBlinkFunction = function () {
+                return (window.chrome || (window.Intl && Intl.v8BreakIterator)) && 'CSS' in window;
+            };
+        t.btnsDef = {
+            viewHTML: {
+                fn: 'toggle'
+            },
+
+            undo: {
+                isSupported: isBlinkFunction,
+                key: 'Z'
+            },
+            redo: {
+                isSupported: isBlinkFunction,
+                key: 'Y'
+            },
+
+            p: {
+                fn: 'formatBlock'
+            },
+            blockquote: {
+                fn: 'formatBlock'
+            },
+            h1: {
+                fn: 'formatBlock',
+                title: h + ' 1'
+            },
+            h2: {
+                fn: 'formatBlock',
+                title: h + ' 2'
+            },
+            h3: {
+                fn: 'formatBlock',
+                title: h + ' 3'
+            },
+            h4: {
+                fn: 'formatBlock',
+                title: h + ' 4'
+            },
+            subscript: {
+                tag: 'sub'
+            },
+            superscript: {
+                tag: 'sup'
+            },
+
+            bold: {
+                key: 'B'
+            },
+            italic: {
+                key: 'I'
+            },
+            underline: {
+                tag: 'u'
+            },
+            strikethrough: {
+                tag: 'strike'
+            },
+
+            strong: {
+                fn: 'bold',
+                key: 'B'
+            },
+            em: {
+                fn: 'italic',
+                key: 'I'
+            },
+            del: {
+                fn: 'strikethrough'
+            },
+
+            createLink: {
+                key: 'K',
+                tag: 'a'
+            },
+            unlink: {},
+
+            insertImage: {},
+
+            justifyLeft: {
+                tag: 'left',
+                forceCss: true
+            },
+            justifyCenter: {
+                tag: 'center',
+                forceCss: true
+            },
+            justifyRight: {
+                tag: 'right',
+                forceCss: true
+            },
+            justifyFull: {
+                tag: 'justify',
+                forceCss: true
+            },
+
+            unorderedList: {
+                fn: 'insertUnorderedList',
+                tag: 'ul'
+            },
+            orderedList: {
+                fn: 'insertOrderedList',
+                tag: 'ol'
+            },
+
+            horizontalRule: {
+                fn: 'insertHorizontalRule'
+            },
+
+            removeformat: {},
+
+            fullscreen: {
+                class: 'trumbowyg-not-disable'
+            },
+            close: {
+                fn: 'destroy',
+                class: 'trumbowyg-not-disable'
+            },
+
+            // Dropdowns
+            formatting: {
+                dropdown: ['p', 'blockquote', 'h1', 'h2', 'h3', 'h4'],
+                ico: 'p'
+            },
+            link: {
+                dropdown: ['createLink', 'unlink']
+            }
+        };
 
         // Defaults Options
-        t.o = $.extend(true, {
+        t.o = $.extend(true, {}, {
             lang: 'en',
-            dir: 'ltr',
-            duration: 200, // Duration of modal box animations
 
-            mobile: false,
-            tablet: true,
-            closable: false,
-            fullscreenable: true,
             fixedBtnPane: false,
             fixedFullWidth: false,
-            semantic: false,
-            resetCss: false,
             autogrow: false,
 
             prefix: 'trumbowyg-',
 
-            convertLink: true,
+            semantic: true,
+            resetCss: false,
+            removeformatPasted: false,
+            tagsToRemove: [],
 
-            btns: ['viewHTML',
-                        '|', 'formatting',
-                        '|', $.trumbowyg.btnsGrps.design,
-                        '|', 'link',
-                        '|', 'insertImage',
-                        '|', $.trumbowyg.btnsGrps.justify,
-                        '|', $.trumbowyg.btnsGrps.lists,
-                        '|', 'horizontalRule'],
-            btnsAdd: [],
+            btnsGrps: {
+                design: ['bold', 'italic', 'underline', 'strikethrough'],
+                semantic: ['strong', 'em', 'del'],
+                justify: ['justifyLeft', 'justifyCenter', 'justifyRight', 'justifyFull'],
+                lists: ['unorderedList', 'orderedList']
+            },
+            btns: [
+                ['viewHTML'],
+                ['undo', 'redo'],
+                ['formatting'],
+                'btnGrp-semantic',
+                ['superscript', 'subscript'],
+                ['link'],
+                ['insertImage'],
+                'btnGrp-justify',
+                'btnGrp-lists',
+                ['horizontalRule'],
+                ['removeformat'],
+                ['fullscreen']
+            ],
+            // For custom button definitions
+            btnsDef: {},
 
-            /**
-             * When the button is associated to a empty object
-             * func and title attributs are defined from the button key value
-             *
-             * For example
-             *      foo: {}
-             * is equivalent to :
-             *      foo: {
-             *          func: 'foo',
-             *          title: this.lang.foo
-             *      }
-             */
-            btnsDef: {
-                viewHTML: {
-                    func: 'toggle'
-                },
+            inlineElementsSelector: 'a,abbr,acronym,b,caption,cite,code,col,dfn,dir,dt,dd,em,font,hr,i,kbd,li,q,span,strikeout,strong,sub,sup,u',
 
-                p: {
-                    func: 'formatBlock'
-                },
-                blockquote: {
-                    func: 'formatBlock'
-                },
-                h1: {
-                    func: 'formatBlock',
-                    title: t.lang.header + ' 1'
-                },
-                h2: {
-                    func: 'formatBlock',
-                    title: t.lang.header + ' 2'
-                },
-                h3: {
-                    func: 'formatBlock',
-                    title: t.lang.header + ' 3'
-                },
-                h4: {
-                    func: 'formatBlock',
-                    title: t.lang.header + ' 4'
-                },
+            pasteHandlers: [],
 
-                bold: {},
-                italic: {},
-                underline: {},
-                strikethrough: {},
+            imgDblClickHandler: function () {
+                var $img = $(this),
+                    src = $img.attr('src'),
+                    base64 = '(Base64)';
 
-                strong: {
-                    func: 'bold'
-                },
-                em: {
-                    func: 'italic'
-                },
-                del: {
-                    func: 'strikethrough'
-                },
-
-                createLink: {},
-                unlink: {},
-
-                insertImage: {},
-
-                justifyLeft: {},
-                justifyCenter: {},
-                justifyRight: {},
-                justifyFull: {},
-
-                unorderedList: {
-                    func: 'insertUnorderedList'
-                },
-                orderedList: {
-                    func: 'insertOrderedList'
-                },
-
-                horizontalRule: {
-                    func: 'insertHorizontalRule'
-                },
-
-                // Dropdowns
-                formatting: {
-                    dropdown: ['p', 'blockquote', 'h1', 'h2', 'h3', 'h4']
-                },
-                link:       {
-                    dropdown: ['createLink', 'unlink']
+                if (src.indexOf('data:image') === 0) {
+                    src = base64;
                 }
-            }
-        }, opts);
 
-        if(t.o.semantic && !opts.btns)
-            t.o.btns = [
-                'viewHTML',
-                '|', 'formatting',
-                '|', $.trumbowyg.btnsGrps.semantic,
-                '|', 'link',
-                '|', 'insertImage',
-                '|', $.trumbowyg.btnsGrps.justify,
-                '|', $.trumbowyg.btnsGrps.lists,
-                '|', 'horizontalRule'
-            ];
-        else if(opts && opts.btns)
-            t.o.btns = opts.btns;
+                t.openModalInsert(t.lang.insertImage, {
+                    url: {
+                        label: 'URL',
+                        value: src,
+                        required: true
+                    },
+                    alt: {
+                        label: t.lang.description,
+                        value: $img.attr('alt')
+                    }
+                }, function (v) {
+                    if (v.src !== base64) {
+                        $img.attr({
+                            src: v.src
+                        });
+                    }
+                    $img.attr({
+                        alt: v.alt
+                    });
+                    return true;
+                });
+                return false;
+            },
+
+            plugins: {}
+        }, options);
+
+        t.disabled = t.o.disabled || (editorElem.nodeName === 'TEXTAREA' && editorElem.disabled);
+
+        if (options.btns) {
+            t.o.btns = options.btns;
+        } else if (!t.o.semantic) {
+            t.o.btns[4] = 'btnGrp-design';
+        }
+
+        $.each(t.o.btnsDef, function (btnName, btnDef) {
+            t.addBtnDef(btnName, btnDef);
+        });
+
+        // Keyboard shortcuts are load in this array
+        t.keys = [];
+
+        // Tag to button dynamically hydrated
+        t.tagToButton = {};
+        t.tagHandlers = [];
+
+        // Admit multiple paste handlers
+        t.pasteHandlers = [].concat(t.o.pasteHandlers);
 
         t.init();
     };
 
     Trumbowyg.prototype = {
-        init: function(){
+        init: function () {
             var t = this;
-            t.height = t.$e.css('height');
+            t.height = t.$ta.height();
 
-            if(t.isEnabled()){
-                t.buildEditor(true);
-                return;
-            }
+            t.initPlugins();
+
+            // Disable image resize in Firefox
+            t.doc.execCommand('enableObjectResizing', false, false);
+            t.doc.execCommand('defaultParagraphSeparator', false, 'p');
 
             t.buildEditor();
             t.buildBtnPane();
@@ -285,560 +442,714 @@
             t.fixedBtnPaneEvents();
 
             t.buildOverlay();
+
+            setTimeout(function () {
+                if (t.disabled) {
+                    t.toggleDisable(true);
+                }
+                t.$c.trigger('tbwinit');
+            });
         },
 
-        buildEditor: function(disable){
-            var t = this;
-            var pfx = t.o.prefix;
+        addBtnDef: function (btnName, btnDef) {
+            this.btnsDef[btnName] = btnDef;
+        },
 
-
-            if(disable === true){
-                if(!t.$e.is('textarea')){
-                    var textarea = t.buildTextarea().val(t.$e.val());
-                    t.$e.hide().after(textarea);
-                }
-                return;
-            }
-
+        buildEditor: function () {
+            var t = this,
+                prefix = t.o.prefix,
+                html = '';
 
             t.$box = $('<div/>', {
-                class: pfx + 'box ' + pfx + t.o.lang + ' trumbowyg'
+                class: prefix + 'box ' + prefix + 'editor-visible ' + prefix + t.o.lang + ' trumbowyg'
             });
 
-            t.isTextarea = true;
-            if(t.$e.is('textarea'))
-                t.$editor = $('<div/>');
-            else {
-                t.$editor = t.$e;
-                t.$e = t.buildTextarea().val(t.$e.val());
-                t.isTextarea = false;
-            }
-
-            t.$e.hide()
-                   .addClass(pfx + 'textarea');
-
-            var html = '';
-            if(t.isTextarea){
-                html = t.$e.val();
-                t.$box.insertAfter(t.$e)
-                         .append(t.$editor)
-                         .append(t.$e);
+            // $ta = Textarea
+            // $ed = Editor
+            t.isTextarea = t.$ta.is('textarea');
+            if (t.isTextarea) {
+                html = t.$ta.val();
+                t.$ed = $('<div/>');
+                t.$box
+                    .insertAfter(t.$ta)
+                    .append(t.$ed, t.$ta);
             } else {
-                html = t.$editor.html();
-                t.$box.insertAfter(t.$editor)
-                         .append(t.$e)
-                         .append(t.$editor);
+                t.$ed = t.$ta;
+                html = t.$ed.html();
+
+                t.$ta = $('<textarea/>', {
+                    name: t.$ta.attr('id'),
+                    height: t.height
+                }).val(html);
+
+                t.$box
+                    .insertAfter(t.$ed)
+                    .append(t.$ta, t.$ed);
                 t.syncCode();
             }
 
-            t.$editor.addClass(pfx + 'editor')
-                        .attr('contenteditable', true)
-                        .attr('dir', t.o.dir)
-                        .html(html);
+            t.$ta
+                .addClass(prefix + 'textarea')
+                .attr('tabindex', -1)
+            ;
 
-            if(t.o.resetCss)
-                t.$editor.addClass(pfx + 'reset-css');
+            t.$ed
+                .addClass(prefix + 'editor')
+                .attr({
+                    contenteditable: true,
+                    dir: t.lang._dir || 'ltr'
+                })
+                .html(html)
+            ;
 
-            if(!t.o.autogrow){
-                $.each([t.$editor, t.$e], function(i, $el){
-                    $el.css({
-                        height: t.height,
-                        overflow: 'auto'
-                    });
+            if (t.o.tabindex) {
+                t.$ed.attr('tabindex', t.o.tabindex);
+            }
+
+            if (t.$c.is('[placeholder]')) {
+                t.$ed.attr('placeholder', t.$c.attr('placeholder'));
+            }
+
+            if (t.o.resetCss) {
+                t.$ed.addClass(prefix + 'reset-css');
+            }
+
+            if (!t.o.autogrow) {
+                t.$ta.add(t.$ed).css({
+                    height: t.height
                 });
             }
 
-            if(t.o.semantic){
-                t.$editor.html(
-                    t.$editor.html()
-                        .replace('<br>', '</p><p>')
-                        .replace('&nbsp;', '')
-                );
-                t.semanticCode();
-            }
+            t.semanticCode();
 
 
+            t._ctrl = false;
+            t.$ed
+                .on('dblclick', 'img', t.o.imgDblClickHandler)
+                .on('keydown', function (e) {
+                    t._composition = (e.which === 229);
 
-            t.$editor
-            .on('dblclick', 'img', function(){
-                var $img = $(this);
-                t.openModalInsert(t.lang.insertImage, {
-                    url: {
-                        label: 'URL',
-                        value: $img.attr('src'),
-                        required: true
-                    },
-                    alt: {
-                        label: 'description',
-                        value: $img.attr('alt')
+                    if (e.ctrlKey) {
+                        t._ctrl = true;
+                        var k = t.keys[String.fromCharCode(e.which).toUpperCase()];
+
+                        try {
+                            t.execCmd(k.fn, k.param);
+                            return false;
+                        } catch (c) {
+                        }
                     }
-                }, function(v){
-                    $img.attr('src', v.url);
-                    $img.attr('alt', v.alt);
+                })
+                .on('keyup', function (e) {
+                    if (e.which >= 37 && e.which <= 40) {
+                        return;
+                    }
+
+                    if (e.ctrlKey && (e.which === 89 || e.which === 90)) {
+                        t.$c.trigger('tbwchange');
+                    } else if (!t._ctrl && e.which !== 17 && !t._composition) {
+                        t.semanticCode(false, e.which === 13);
+                        t.$c.trigger('tbwchange');
+                    }
+
+                    setTimeout(function () {
+                        t._ctrl = false;
+                    }, 200);
+                })
+                .on('mouseup keydown keyup', function () {
+                    t.updateButtonPaneStatus();
+                })
+                .on('focus blur', function (e) {
+                    t.$c.trigger('tbw' + e.type);
+                    if (e.type === 'blur') {
+                        $('.' + prefix + 'active-button', t.$btnPane).removeClass(prefix + 'active-button ' + prefix + 'active');
+                    }
+                })
+                .on('cut', function () {
+                    t.$c.trigger('tbwchange');
+                })
+                .on('paste', function (e) {
+                    if (t.o.removeformatPasted) {
+                        e.preventDefault();
+
+                        try {
+                            // IE
+                            var text = window.clipboardData.getData('Text');
+
+                            try {
+                                // <= IE10
+                                t.doc.selection.createRange().pasteHTML(text);
+                            } catch (c) {
+                                // IE 11
+                                t.doc.getSelection().getRangeAt(0).insertNode(t.doc.createTextNode(text));
+                            }
+                        } catch (d) {
+                            // Not IE
+                            t.execCmd('insertText', (e.originalEvent || e).clipboardData.getData('text/plain'));
+                        }
+                    }
+
+                    // Call pasteHandlers
+                    $.each(t.pasteHandlers, function (i, pasteHandler) {
+                        pasteHandler(e);
+                    });
+
+                    setTimeout(function () {
+                        if (t.o.semantic) {
+                            t.semanticCode(false, true);
+                        } else {
+                            t.syncCode();
+                        }
+                        t.$c.trigger('tbwpaste', e);
+                    }, 0);
                 });
-                return false;
-            })
-            .on('keyup', function(e){
-                t.semanticCode(false, e.which === 13);
-            })
-            .on('blur', function(){
-                t.syncCode();
+            t.$ta.on('keyup paste', function () {
+                t.$c.trigger('tbwchange');
+            });
+
+            $(t.doc).on('keydown', function (e) {
+                if (e.which === 27) {
+                    t.closeModal();
+                    return false;
+                }
             });
         },
 
 
-        // Build the Textarea which contain HTML generated code
-        buildTextarea: function(){
-            return $('<textarea/>', {
-                name: this.$e.attr('id'),
-                height: this.height
-            });
-        },
-
-
-        // Build button pane, use o.btns and o.btnsAdd options
-        buildBtnPane: function(){
+        // Build button pane, use o.btns option
+        buildBtnPane: function () {
             var t = this,
-                pfx = t.o.prefix;
+                prefix = t.o.prefix;
 
-            if(t.o.btns === false)
-                return;
-
-            t.$btnPane = $('<ul/>', {
-                class: pfx + 'button-pane'
+            var $btnPane = t.$btnPane = $('<div/>', {
+                class: prefix + 'button-pane'
             });
 
-            $.each(t.o.btns.concat(t.o.btnsAdd), function(i, btn){
+            $.each(t.o.btns, function (i, btnGrps) {
                 // Managment of group of buttons
                 try {
-                    var b = btn.split('btnGrp-');
-                    if(b[1] !== undefined)
-                        btn = $.trumbowyg.btnsGrps[b[1]];
-                } catch(e){}
+                    var b = btnGrps.split('btnGrp-');
+                    if (b[1] != null) {
+                        btnGrps = t.o.btnsGrps[b[1]];
+                    }
+                } catch (c) {
+                }
 
-                if(!$.isArray(btn))
-                    btn = [btn];
+                if (!$.isArray(btnGrps)) {
+                    btnGrps = [btnGrps];
+                }
 
-                $.each(btn, function(i, b){
-                    try { // Prevent buildBtn error
-                        var $li = $('<li/>');
-
-                        if(b === '|') // It's a separator
-                            $li.addClass(pfx + 'separator');
-                        else if(t.isSupportedBtn(b)) // It's a supported button
-                            $li.append(t.buildBtn(b));
-
-                        t.$btnPane.append($li);
-                    } catch(e){}
+                var $btnGroup = $('<div/>', {
+                    class: prefix + 'button-group ' + ((btnGrps.indexOf('fullscreen') >= 0) ? prefix + 'right' : '')
                 });
-            });
+                $.each(btnGrps, function (i, btn) {
+                    try { // Prevent buildBtn error
+                        var $item;
 
-            // Build right li for fullscreen and close buttons
-            var $liRight = $('<li/>', {
-                class: pfx + 'not-disable ' + pfx + 'buttons-right'
-            });
-
-            // Add the fullscreen button
-            if(t.o.fullscreenable)
-                $liRight
-                    .append(t.buildRightBtn('fullscreen')
-                    .on('click', function(){
-                        var cssClass = pfx + 'fullscreen';
-                        t.$box.toggleClass(cssClass);
-
-                        if(t.$box.hasClass(cssClass)){
-                            $('body').css('overflow', 'hidden');
-                            $.each([t.$editor, t.$e], function(){
-                                $(this).css({
-                                    height: 'calc(100% - 35px)',
-                                    overflow: 'auto'
-                                });
-                            });
-                            t.$btnPane.css('width', '100%');
-                        } else {
-                            $('body').css('overflow', 'auto');
-                            t.$box.removeAttr('style');
-                            if(!t.o.autogrow)
-                                $([t.$editor, t.$e]).each(function(i, $el){
-                                    $el.css('height', t.height);
-                                });
+                        if (t.isSupportedBtn(btn)) { // It's a supported button
+                            $item = t.buildBtn(btn);
                         }
-                        $(window).trigger('scroll');
-                    }));
 
-            // Build and add close button
-            if(t.o.closable)
-                $liRight
-                    .append(
-                        t.buildRightBtn('close')
-                        .on('click', function(){
-                            if(t.$box.hasClass(pfx + 'fullscreen'))
-                                $('body').css('overflow', 'auto');
-                            t.destroy();
-                        })
-                    );
+                        $btnGroup.append($item);
+                    } catch (c) {
+                    }
+                });
+                $btnPane.append($btnGroup);
+            });
 
-
-            // Add right li only if isn't empty
-            if($liRight.not(':empty'))
-                t.$btnPane.append($liRight);
-
-            t.$box.prepend(t.$btnPane);
+            t.$box.prepend($btnPane);
         },
 
 
         // Build a button and his action
-        buildBtn: function(n){ // n is name of the button
+        buildBtn: function (btnName) { // btnName is name of the button
             var t = this,
-                pfx = t.o.prefix,
-                btn = t.o.btnsDef[n],
-                d = btn.dropdown,
-                textDef = t.lang[n] || n,
+                prefix = t.o.prefix,
+                btn = t.btnsDef[btnName],
+                isDropdown = btn.dropdown,
+                textDef = t.lang[btnName] || btnName,
 
                 $btn = $('<button/>', {
                     type: 'button',
-                    class: pfx + n +'-button' + (btn.ico ? ' '+ pfx + btn.ico +'-button' : ''),
-                    text: btn.text || btn.title || textDef,
-                    title: btn.title || btn.text || textDef,
-                    mousedown: function(e){
-                        if(!d || t.$box.find('.'+n+'-'+pfx + 'dropdown').is(':hidden'))
-                            $('body').trigger('mousedown');
+                    class: prefix + btnName + '-button ' + (btn.class || ''),
+                    html: t.hasSvg ? '<svg><use xlink:href="' + t.svgPath + '#' + prefix + (btn.ico || btnName).replace(/([A-Z]+)/g, '-$1').toLowerCase() + '"/></svg>' : '',
+                    title: (btn.title || btn.text || textDef) + ((btn.key) ? ' (Ctrl + ' + btn.key + ')' : ''),
+                    tabindex: -1,
+                    mousedown: function () {
+                        if (!isDropdown || $('.' + btnName + '-' + prefix + 'dropdown', t.$box).is(':hidden')) {
+                            $('body', t.doc).trigger('mousedown');
+                        }
 
-                        if(t.$btnPane.hasClass(pfx + 'disable') && !$(this).hasClass(pfx + 'active') && !$(this).parent().hasClass(pfx + 'not-disable'))
+                        if (t.$btnPane.hasClass(prefix + 'disable') && !$(this).hasClass(prefix + 'active') && !$(this).hasClass(prefix + 'not-disable')) {
                             return false;
+                        }
 
-                        t.execCmd((d ? 'dropdown' : false) || btn.func || n,
-                                  btn.param || n);
+                        t.execCmd((isDropdown ? 'dropdown' : false) || btn.fn || btnName, btn.param || btnName, btn.forceCss || false);
 
-                        e.stopPropagation();
-                        e.preventDefault();
+                        return false;
                     }
                 });
 
-
-
-            if(d){
-                $btn.addClass(pfx + 'open-dropdown');
-                var c = pfx + 'dropdown',
-                    dd = $('<div/>', { // the dropdown
-                        class: n + '-' + c + ' ' + c + ' ' + pfx + 'fixed-top'
+            if (isDropdown) {
+                $btn.addClass(prefix + 'open-dropdown');
+                var dropdownPrefix = prefix + 'dropdown',
+                    $dropdown = $('<div/>', { // the dropdown
+                        class: dropdownPrefix + '-' + btnName + ' ' + dropdownPrefix + ' ' + prefix + 'fixed-top',
+                        'data-dropdown': btnName
                     });
-                for(var i = 0, l = d.length; i < l; i++)
-                    if(t.o.btnsDef[d[i]] && t.isSupportedBtn(d[i]))
-                        dd.append(t.buildSubBtn(d[i]));
-                t.$box.append(dd.hide());
+                $.each(isDropdown, function (i, def) {
+                    if (t.btnsDef[def] && t.isSupportedBtn(def)) {
+                        $dropdown.append(t.buildSubBtn(def));
+                    }
+                });
+                t.$box.append($dropdown.hide());
+            } else if (btn.key) {
+                t.keys[btn.key] = {
+                    fn: btn.fn || btnName,
+                    param: btn.param || btnName
+                };
+            }
+
+            if (!isDropdown) {
+                t.tagToButton[(btn.tag || btnName).toLowerCase()] = btnName;
             }
 
             return $btn;
         },
         // Build a button for dropdown menu
         // @param n : name of the subbutton
-        buildSubBtn: function(n){
+        buildSubBtn: function (btnName) {
             var t = this,
-                btnDef = t.o.btnsDef[n];
+                prefix = t.o.prefix,
+                btn = t.btnsDef[btnName];
+
+            if (btn.key) {
+                t.keys[btn.key] = {
+                    fn: btn.fn || btnName,
+                    param: btn.param || btnName
+                };
+            }
+
+            t.tagToButton[(btn.tag || btnName).toLowerCase()] = btnName;
+
             return $('<button/>', {
                 type: 'button',
-                text: btnDef.text || btnDef.title || t.lang[n] || n,
-                mousedown: function(e){
-                    $('body').trigger('mousedown');
+                class: prefix + btnName + '-dropdown-button' + (btn.ico ? ' ' + prefix + btn.ico + '-button' : ''),
+                html: t.hasSvg ? '<svg><use xlink:href="' + t.svgPath + '#' + prefix + (btn.ico || btnName).replace(/([A-Z]+)/g, '-$1').toLowerCase() + '"/></svg>' + (btn.text || btn.title || t.lang[btnName] || btnName) : '',
+                title: ((btn.key) ? ' (Ctrl + ' + btn.key + ')' : null),
+                style: btn.style || null,
+                mousedown: function () {
+                    $('body', t.doc).trigger('mousedown');
 
-                    t.execCmd(btnDef.func || n,
-                              btnDef.param || n);
+                    t.execCmd(btn.fn || btnName, btn.param || btnName, btn.forceCss || false);
 
-                    e.stopPropagation();
-                    e.preventDefault();
                     return false;
                 }
             });
         },
-        // Build a button for right li
-        // @param n : name of the right button
-        buildRightBtn: function(n){
-            return $('<button/>', {
-                type: 'button',
-                class: this.o.prefix + n + '-button',
-                title: this.lang[n],
-                text: this.lang[n]
-            });
-        },
         // Check if button is supported
-        isSupportedBtn: function(btn){
-            return typeof this.o.btnsDef[btn].isSupported !== 'function' || this.o.btnsDef[btn].isSupported();
+        isSupportedBtn: function (b) {
+            try {
+                return this.btnsDef[b].isSupported();
+            } catch (c) {
+            }
+            return true;
         },
 
         // Build overlay for modal box
-        buildOverlay: function(){
+        buildOverlay: function () {
             var t = this;
             t.$overlay = $('<div/>', {
                 class: t.o.prefix + 'overlay'
             }).css({
                 top: t.$btnPane.outerHeight(),
-                height: (parseInt(t.$editor.outerHeight()) + 1) + 'px'
+                height: (t.$ed.outerHeight() + 1) + 'px'
             }).appendTo(t.$box);
             return t.$overlay;
         },
-        showOverlay: function(){
+        showOverlay: function () {
             var t = this;
             $(window).trigger('scroll');
-            t.$overlay.fadeIn(t.o.duration);
+            t.$overlay.fadeIn(200);
             t.$box.addClass(t.o.prefix + 'box-blur');
         },
-        hideOverlay: function(){
+        hideOverlay: function () {
             var t = this;
-            t.$overlay.fadeOut(t.o.duration/4);
+            t.$overlay.fadeOut(50);
             t.$box.removeClass(t.o.prefix + 'box-blur');
         },
 
         // Management of fixed button pane
-        fixedBtnPaneEvents: function(){
+        fixedBtnPaneEvents: function () {
             var t = this,
-                ffw = t.o.fixedFullWidth;
-            if(!t.o.fixedBtnPane)
+                fixedFullWidth = t.o.fixedFullWidth,
+                $box = t.$box;
+
+            if (!t.o.fixedBtnPane) {
                 return;
+            }
 
             t.isFixed = false;
 
             $(window)
-            .on('scroll resize', function(){
-                if(!t.$box)
-                    return;
-
-                t.syncCode();
-
-                var s = $(window).scrollTop(), // s is top scroll
-                    o = t.$box.offset().top + 1, // o is offset
-                    toFixed = (s - o > 0) && ((s - o - parseInt(t.height)) < 0),
-                    bp = t.$btnPane,
-                    mt = bp.css('height'),
-                    oh = bp.outerHeight();
-
-                if(toFixed){
-                    if(!t.isFixed){
-                        t.isFixed = true;
-                        bp.css({
-                            position: 'fixed',
-                            top: 0,
-                            left: ffw ? '0' : 'auto',
-                            zIndex: 7
-                        });
-                        t.$editor.css({ marginTop: mt });
-                        t.$e.css({ marginTop: mt });
+                .on('scroll resize', function () {
+                    if (!$box) {
+                        return;
                     }
-                    bp.css({
-                        width: ffw ? '100%' : ((parseInt(t.$box.css('width'))-1) + 'px')
-                    });
 
-                    $('.' + t.o.prefix + 'fixed-top', t.$box).css({
-                        position: ffw ? 'fixed' : 'absolute',
-                        top: ffw ? oh : parseInt(oh) + (s - o) + 'px',
-                        zIndex: 15
-                    });
-                } else if(t.isFixed) {
-                    t.isFixed = false;
-                    bp.removeAttr('style');
-                    t.$editor.css({ marginTop: 0 });
-                    t.$e.css({ marginTop: 0 });
-                    $('.' + t.o.prefix + 'fixed-top', t.$box).css({
-                        position: 'absolute',
-                        top: oh
-                    });
-                }
-            });
+                    t.syncCode();
+
+                    var scrollTop = $(window).scrollTop(),
+                        offset = $box.offset().top + 1,
+                        bp = t.$btnPane,
+                        oh = bp.outerHeight() - 2;
+
+                    if ((scrollTop - offset > 0) && ((scrollTop - offset - t.height) < 0)) {
+                        if (!t.isFixed) {
+                            t.isFixed = true;
+                            bp.css({
+                                position: 'fixed',
+                                top: 0,
+                                left: fixedFullWidth ? '0' : 'auto',
+                                zIndex: 7
+                            });
+                            $([t.$ta, t.$ed]).css({marginTop: bp.height()});
+                        }
+                        bp.css({
+                            width: fixedFullWidth ? '100%' : (($box.width() - 1) + 'px')
+                        });
+
+                        $('.' + t.o.prefix + 'fixed-top', $box).css({
+                            position: fixedFullWidth ? 'fixed' : 'absolute',
+                            top: fixedFullWidth ? oh : oh + (scrollTop - offset) + 'px',
+                            zIndex: 15
+                        });
+                    } else if (t.isFixed) {
+                        t.isFixed = false;
+                        bp.removeAttr('style');
+                        $([t.$ta, t.$ed]).css({marginTop: 0});
+                        $('.' + t.o.prefix + 'fixed-top', $box).css({
+                            position: 'absolute',
+                            top: oh
+                        });
+                    }
+                });
         },
 
+        // Disable editor
+        toggleDisable: function (disable) {
+            var t = this,
+                prefix = t.o.prefix;
 
+            t.disabled = disable;
+
+            if (disable) {
+                t.$ta.attr('disabled', true);
+            } else {
+                t.$ta.removeAttr('disabled');
+            }
+            t.$box.toggleClass(prefix + 'disabled', disable);
+            t.$ed.attr('contenteditable', !disable);
+        },
 
         // Destroy the editor
-        destroy: function(){
+        destroy: function () {
             var t = this,
-                pfx = t.o.prefix,
-                h = t.height,
-                html = t.html();
+                prefix = t.o.prefix,
+                height = t.height;
 
-            if(t.isTextarea)
+            if (t.isTextarea) {
                 t.$box.after(
-                    t.$e.css({height: h})
-                        .val(html)
-                        .removeClass(pfx + 'textarea')
+                    t.$ta
+                        .css({height: height})
+                        .val(t.html())
+                        .removeClass(prefix + 'textarea')
                         .show()
                 );
-            else
+            } else {
                 t.$box.after(
-                    t.$editor
-                        .css({height: h})
-                        .removeClass(pfx + 'editor')
-                        .attr('contenteditable', false)
-                        .html(html)
+                    t.$ed
+                        .css({height: height})
+                        .removeClass(prefix + 'editor')
+                        .removeAttr('contenteditable')
+                        .html(t.html())
                         .show()
                 );
+            }
+
+            t.$ed.off('dblclick', 'img');
+
+            t.destroyPlugins();
 
             t.$box.remove();
-            t.$creator.removeData('trumbowyg');
+            t.$c.removeData('trumbowyg');
+            $('body').removeClass(prefix + 'body-fullscreen');
         },
-
 
 
         // Empty the editor
-        empty: function(){
-            this.$e.val('');
+        empty: function () {
+            this.$ta.val('');
             this.syncCode(true);
         },
 
 
-
         // Function call when click on viewHTML button
-        toggle: function(){
+        toggle: function () {
             var t = this,
-                pfx = t.o.prefix;
+                prefix = t.o.prefix;
             t.semanticCode(false, true);
-            t.$editor.toggle();
-            t.$e.toggle();
-            t.$btnPane.toggleClass(pfx + 'disable');
-            t.$btnPane.find('.'+pfx + 'viewHTML-button').toggleClass(pfx + 'active');
+            setTimeout(function () {
+                t.doc.activeElement.blur();
+                t.$box.toggleClass(prefix + 'editor-hidden ' + prefix + 'editor-visible');
+                t.$btnPane.toggleClass(prefix + 'disable');
+                $('.' + prefix + 'viewHTML-button', t.$btnPane).toggleClass(prefix + 'active');
+                if (t.$box.hasClass(prefix + 'editor-visible')) {
+                    t.$ta.attr('tabindex', -1);
+                } else {
+                    t.$ta.removeAttr('tabindex');
+                }
+            }, 0);
         },
 
         // Open dropdown when click on a button which open that
-        dropdown: function(name){
+        dropdown: function (name) {
             var t = this,
-                pfx = t.o.prefix,
-                $dropdown = t.$box.find('.'+name+'-'+pfx + 'dropdown'),
-                $btn = t.$btnPane.find('.'+pfx+name+'-button');
+                d = t.doc,
+                prefix = t.o.prefix,
+                $dropdown = $('[data-dropdown=' + name + ']', t.$box),
+                $btn = $('.' + prefix + name + '-button', t.$btnPane),
+                show = $dropdown.is(':hidden');
 
-            if($dropdown.is(':hidden')){
+            $('body', d).trigger('mousedown');
+
+            if (show) {
                 var o = $btn.offset().left;
-                $btn.addClass(pfx + 'active');
+                $btn.addClass(prefix + 'active');
 
                 $dropdown.css({
                     position: 'absolute',
-                    top: t.$btnPane.outerHeight(),
-                    left: (t.o.fixedFullWidth && t.isFixed) ? o+'px' : (o - t.$btnPane.offset().left)+'px'
+                    top: $btn.offset().top - t.$btnPane.offset().top + $btn.outerHeight(),
+                    left: (t.o.fixedFullWidth && t.isFixed) ? o + 'px' : (o - t.$btnPane.offset().left) + 'px'
                 }).show();
 
                 $(window).trigger('scroll');
 
-                $('body').on('mousedown', function(){
-                    $('.' + pfx + 'dropdown').hide();
-                    $('.' + pfx + 'active').removeClass(pfx + 'active');
-                    $('body').off('mousedown');
+                $('body', d).on('mousedown', function () {
+                    $('.' + prefix + 'dropdown', d).hide();
+                    $('.' + prefix + 'active', d).removeClass(prefix + 'active');
+                    $('body', d).off('mousedown');
                 });
-            } else
-                $('body').trigger('mousedown');
+            }
         },
-
-
 
 
         // HTML Code management
-        html: function(html){
+        html: function (html) {
             var t = this;
-            if(html){
-                t.$e.val(html);
+            if (html != null) {
+                t.$ta.val(html);
                 t.syncCode(true);
                 return t;
-            } else
-                return t.$e.val();
+            }
+            return t.$ta.val();
         },
-        syncCode: function(force){
+        syncTextarea: function () {
             var t = this;
-            if(!force && t.$editor.is(':visible'))
-                t.$e.val(t.$editor.html());
-            else
-                t.$editor.html(t.$e.val());
+            t.$ta.val(t.$ed.text().trim().length > 0 || t.$ed.find('hr,img,embed,input').length > 0 ? t.$ed.html() : '');
+        },
+        syncCode: function (force) {
+            var t = this;
+            if (!force && t.$ed.is(':visible')) {
+                t.syncTextarea();
+            } else {
+                t.$ed.html(t.$ta.val());
+            }
 
-            if(t.o.autogrow){
-                t.height = t.$editor.css('height');
-                t.$e.css({ height: t.height });
+            if (t.o.autogrow) {
+                t.height = t.$ed.height();
+                if (t.height !== t.$ta.css('height')) {
+                    t.$ta.css({height: t.height});
+                    t.$c.trigger('tbwresize');
+                }
             }
         },
 
         // Analyse and update to semantic code
         // @param force : force to sync code from textarea
         // @param full  : wrap text nodes in <p>
-        semanticCode: function(force, full){
+        semanticCode: function (force, full) {
             var t = this;
+            t.saveRange();
             t.syncCode(force);
 
-            if(t.o.semantic){
+            $(t.o.tagsToRemove.join(','), t.$ed).remove();
+
+            if (t.o.semantic) {
                 t.semanticTag('b', 'strong');
                 t.semanticTag('i', 'em');
                 t.semanticTag('strike', 'del');
 
-                if(full){
-                    // Wrap text nodes in p
-                    t.$editor.contents()
-                    .filter(function(){
-                        // Only non-empty text nodes
-                        return this.nodeType === 3 && $.trim(this.nodeValue).length > 0;
-                    }).wrap('<p></p>').end()
+                if (full) {
+                    var inlineElementsSelector = t.o.inlineElementsSelector,
+                        blockElementsSelector = ':not(' + inlineElementsSelector + ')';
 
-                    // Remove all br
-                    .filter('br').remove();
+                    // Wrap text nodes in span for easier processing
+                    t.$ed.contents().filter(function () {
+                        return this.nodeType === 3 && this.nodeValue.trim().length > 0;
+                    }).wrap('<span data-tbw/>');
 
-                    t.saveSelection();
-                    t.semanticTag('div', 'p');
-                    t.restoreSelection();
+                    // Wrap groups of inline elements in paragraphs (recursive)
+                    var wrapInlinesInParagraphsFrom = function ($from) {
+                        if ($from.length !== 0) {
+                            var $finalParagraph = $from.nextUntil(blockElementsSelector).andSelf().wrapAll('<p/>').parent(),
+                                $nextElement = $finalParagraph.nextAll(inlineElementsSelector).first();
+                            $finalParagraph.next('br').remove();
+                            wrapInlinesInParagraphsFrom($nextElement);
+                        }
+                    };
+                    wrapInlinesInParagraphsFrom(t.$ed.children(inlineElementsSelector).first());
+
+                    t.semanticTag('div', 'p', true);
+
+                    // Unwrap paragraphs content, containing nothing usefull
+                    t.$ed.find('p').filter(function () {
+                        // Don't remove currently being edited element
+                        if (t.range && this === t.range.startContainer) {
+                            return false;
+                        }
+                        return $(this).text().trim().length === 0 && $(this).children().not('br,span').length === 0;
+                    }).contents().unwrap();
+
+                    // Get rid of temporial span's
+                    $('[data-tbw]', t.$ed).contents().unwrap();
+
+                    // Remove empty <p>
+                    t.$ed.find('p:empty').remove();
                 }
 
-                t.$e.val(t.$editor.html());
+                t.restoreRange();
+
+                t.syncTextarea();
             }
         },
-        semanticTag: function(oldTag, newTag){
-            $(oldTag, this.$editor).each(function(){
-                $(this).replaceWith(function(){
-                    return '<'+newTag+'>' + $(this).html() + '</'+newTag+'>';
-                });
+
+        semanticTag: function (oldTag, newTag, copyAttributes) {
+            $(oldTag, this.$ed).each(function () {
+                var $oldTag = $(this);
+                $oldTag.wrap('<' + newTag + '/>');
+                if (copyAttributes) {
+                    $.each($oldTag.prop('attributes'), function () {
+                        $oldTag.parent().attr(this.name, this.value);
+                    });
+                }
+                $oldTag.contents().unwrap();
             });
         },
 
-
         // Function call when user click on "Insert Link"
-        createLink: function(){
-            var t = this;
-            t.saveSelection();
+        createLink: function () {
+            var t = this,
+                documentSelection = t.doc.getSelection(),
+                node = documentSelection.focusNode,
+                url,
+                title,
+                target;
+
+            while (['A', 'DIV'].indexOf(node.nodeName) < 0) {
+                node = node.parentNode;
+            }
+
+            if (node && node.nodeName === 'A') {
+                var $a = $(node);
+                url = $a.attr('href');
+                title = $a.attr('title');
+                target = $a.attr('target');
+                var range = t.doc.createRange();
+                range.selectNode(node);
+                documentSelection.addRange(range);
+            }
+
+            t.saveRange();
+
             t.openModalInsert(t.lang.createLink, {
                 url: {
                     label: 'URL',
-                    value: 'http://',
-                    required: true
+                    required: true,
+                    value: url
                 },
                 title: {
                     label: t.lang.title,
-                    value: t.selection
+                    value: title
                 },
                 text: {
                     label: t.lang.text,
-                    value: t.selection
+                    value: t.getRangeText()
+                },
+                target: {
+                    label: t.lang.target,
+                    value: target
                 }
-            }, function(v){ // v is value
-                t.execCmd('createLink', v.url);
-                var l = $('a[href="'+v.url+'"]:not([title])', t.$box);
-                if(v.text.length > 0)
-                    l.text(v.text);
-
-                if(v.title.length > 0)
-                    l.attr('title', v.title);
-
+            }, function (v) { // v is value
+                var link = $(['<a href="', v.url, '">', v.text, '</a>'].join(''));
+                if (v.title.length > 0) {
+                    link.attr('title', v.title);
+                }
+                if (v.target.length > 0) {
+                    link.attr('target', v.target);
+                }
+                t.range.deleteContents();
+                t.range.insertNode(link[0]);
                 return true;
             });
         },
-        insertImage: function(){
+        unlink: function () {
+            var t = this,
+                documentSelection = t.doc.getSelection(),
+                node = documentSelection.focusNode;
+
+            if (documentSelection.isCollapsed) {
+                while (['A', 'DIV'].indexOf(node.nodeName) < 0) {
+                    node = node.parentNode;
+                }
+
+                if (node && node.nodeName === 'A') {
+                    var range = t.doc.createRange();
+                    range.selectNode(node);
+                    documentSelection.addRange(range);
+                }
+            }
+            t.execCmd('unlink', undefined, undefined, true);
+        },
+        insertImage: function () {
             var t = this;
-            t.saveSelection();
+            t.saveRange();
             t.openModalInsert(t.lang.insertImage, {
                 url: {
                     label: 'URL',
-                    value: 'http://',
                     required: true
                 },
                 alt: {
                     label: t.lang.description,
-                    value: t.selection
+                    value: t.getRangeText()
                 }
-            }, function(v){ // v are values
+            }, function (v) { // v are values
                 t.execCmd('insertImage', v.url);
-                $('img[src="'+v.url+'"]:not([alt])', t.$box).attr('alt', v.alt);
+                $('img[src="' + v.url + '"]:not([alt])', t.$box).attr('alt', v.alt);
                 return true;
             });
+        },
+        fullscreen: function () {
+            var t = this,
+                prefix = t.o.prefix,
+                fullscreenCssClass = prefix + 'fullscreen',
+                isFullscreen;
+
+            t.$box.toggleClass(fullscreenCssClass);
+            isFullscreen = t.$box.hasClass(fullscreenCssClass);
+            $('body').toggleClass(prefix + 'body-fullscreen', isFullscreen);
+            $(window).trigger('scroll');
+            t.$c.trigger('tbw' + (isFullscreen ? 'open' : 'close') + 'fullscreen');
         },
 
 
@@ -847,56 +1158,69 @@
          * else try to call anonymous function
          * and finaly native execCommand
          */
-        execCmd: function(cmd, param){
+        execCmd: function (cmd, param, forceCss, skipTrumbowyg) {
             var t = this;
-            if(cmd != 'dropdown')
-                t.$editor.focus();
+            skipTrumbowyg = !!skipTrumbowyg || '';
+
+            if (cmd !== 'dropdown') {
+                t.$ed.focus();
+            }
+
+            t.doc.execCommand('styleWithCSS', false, forceCss || false);
 
             try {
-                t[cmd](param);
-            } catch(e){
+                t[cmd + skipTrumbowyg](param);
+            } catch (c) {
                 try {
-                    cmd(param, t);
-                } catch(e2){
-                    t.$editor.focus();
-                    if(cmd == 'insertHorizontalRule')
-                        param = null;
-                    else if(cmd == 'formatBlock' && (navigator.userAgent.indexOf('MSIE') !== -1 || navigator.appVersion.indexOf('Trident/') > 0))
+                    cmd(param);
+                } catch (e2) {
+                    if (cmd === 'insertHorizontalRule') {
+                        param = undefined;
+                    } else if (cmd === 'formatBlock' && (navigator.userAgent.indexOf('MSIE') !== -1 || navigator.appVersion.indexOf('Trident/') !== -1)) {
                         param = '<' + param + '>';
+                    }
 
-                    document.execCommand(cmd, false, param);
+                    t.doc.execCommand(cmd, false, param);
+
+                    t.syncCode();
+                    t.semanticCode(false, true);
+                }
+
+                if (cmd !== 'dropdown') {
+                    t.updateButtonPaneStatus();
+                    t.$c.trigger('tbwchange');
                 }
             }
-            t.syncCode();
         },
 
 
         // Open a modal box
-        openModal: function(title, content){
+        openModal: function (title, content) {
             var t = this,
-                pfx = t.o.prefix;
+                prefix = t.o.prefix;
 
             // No open a modal box when exist other modal box
-            if($('.' + pfx + 'modal-box', t.$box).size() > 0)
+            if ($('.' + prefix + 'modal-box', t.$box).length > 0) {
                 return false;
+            }
 
-            t.saveSelection();
+            t.saveRange();
             t.showOverlay();
 
             // Disable all btnPane btns
-            t.$btnPane.addClass(pfx + 'disable');
+            t.$btnPane.addClass(prefix + 'disable');
 
             // Build out of ModalBox, it's the mask for animations
             var $modal = $('<div/>', {
-                class: pfx + 'modal ' + pfx + 'fixed-top'
+                class: prefix + 'modal ' + prefix + 'fixed-top'
             }).css({
-                top: (parseInt(t.$btnPane.css('height')) + 1) + 'px'
+                top: t.$btnPane.height()
             }).appendTo(t.$box);
 
-            // Click on overflay close modal by cancelling them
-            t.$overlay.one('click', function(e){
-                e.preventDefault();
-                $modal.trigger(pfx + 'cancel');
+            // Click on overlay close modal by cancelling them
+            t.$overlay.one('click', function () {
+                $modal.trigger('tbwcancel');
+                return false;
             });
 
             // Build the form
@@ -904,41 +1228,43 @@
                 action: '',
                 html: content
             })
-            .on('submit', function(e){
-                e.preventDefault();
-                $modal.trigger(pfx + 'confirm');
-            })
-            .on('reset', function(e){
-                e.preventDefault();
-                $modal.trigger(pfx + 'cancel');
-            });
+                .on('submit', function () {
+                    $modal.trigger('tbwconfirm');
+                    return false;
+                })
+                .on('reset', function () {
+                    $modal.trigger('tbwcancel');
+                    return false;
+                });
 
 
             // Build ModalBox and animate to show them
             var $box = $('<div/>', {
-                class: pfx + 'modal-box',
+                class: prefix + 'modal-box',
                 html: $form
             })
-            .css({
-                top: '-' + parseInt(t.$btnPane.outerHeight()) + 'px',
-                opacity: 0
-            })
-            .appendTo($modal)
-            .animate({
-                top: 0,
-                opacity: 1
-            }, t.o.duration / 2);
+                .css({
+                    top: '-' + t.$btnPane.outerHeight() + 'px',
+                    opacity: 0
+                })
+                .appendTo($modal)
+                .animate({
+                    top: 0,
+                    opacity: 1
+                }, 100);
 
 
             // Append title
             $('<span/>', {
                 text: title,
-                class: pfx + 'modal-title'
+                class: prefix + 'modal-title'
             }).prependTo($box);
+
+            $modal.height($box.outerHeight() + 10);
 
 
             // Focus in modal box
-            $box.find('input:first').focus();
+            $('input:first', $box).focus();
 
 
             // Append Confirm and Cancel buttons
@@ -951,146 +1277,246 @@
             return $modal;
         },
         // @param n is name of modal
-        buildModalBtn: function(n, modal){
+        buildModalBtn: function (n, $modal) {
             var t = this,
-                pfx = t.o.prefix;
+                prefix = t.o.prefix;
 
             return $('<button/>', {
-                class: pfx + 'modal-button ' + pfx + 'modal-' + n,
+                class: prefix + 'modal-button ' + prefix + 'modal-' + n,
                 type: n,
                 text: t.lang[n] || n
-            }).appendTo(modal.find('form'));
+            }).appendTo($('form', $modal));
         },
         // close current modal box
-        closeModal: function(){
+        closeModal: function () {
             var t = this,
-                pfx = t.o.prefix;
+                prefix = t.o.prefix;
 
-            t.$btnPane.removeClass(pfx + 'disable');
+            t.$btnPane.removeClass(prefix + 'disable');
             t.$overlay.off();
 
-            var $modalBox = $('.' + pfx + 'modal-box', t.$box);
+            // Find the modal box
+            var $mb = $('.' + prefix + 'modal-box', t.$box);
 
-            $modalBox.animate({
-                top: '-' + $modalBox.css('height')
-            }, t.o.duration/2, function(){
-                $(this).parent().remove();
+            $mb.animate({
+                top: '-' + $mb.height()
+            }, 100, function () {
+                $mb.parent().remove();
                 t.hideOverlay();
             });
+
+            t.restoreRange();
         },
         // Preformated build and management modal
-        openModalInsert: function(title, fields, cmd){
+        openModalInsert: function (title, fields, cmd) {
             var t = this,
-                pfx  = t.o.prefix,
+                prefix = t.o.prefix,
                 lg = t.lang,
-                html = '';
+                html = '',
+                CONFIRM_EVENT = 'tbwconfirm';
 
-            for(var f in fields){
-                var fd = fields[f], // field definition
-                    label = (fd.label === undefined) ? (lg[f] ? lg[f] : f) : (lg[fd.label] ? lg[fd.label] : fd.label);
+            $.each(fields, function (fieldName, field) {
+                var l = field.label,
+                    n = field.name || fieldName;
 
-                if(fd.name === undefined)
-                    fd.name = f;
-
-                if(!fd.pattern && f === 'url'){
-                    fd.pattern = /^(http|https):\/\/([\w~#!:.?+=&%@!\-\/]+)$/;
-                    fd.patternError = lg.invalidUrl;
-                }
-
-                html += '<label><input type="'+(fd.type || 'text')+'" name="'+fd.name+'" value="'+(fd.value || '')+'"><span class="'+pfx+'input-infos"><span>'+label+'</span></span></label>';
-            }
+                html += '<label><input type="' + (field.type || 'text') + '" name="' + n + '" value="' + (field.value || '').replace(/"/g, '&quot;') + '"><span class="' + prefix + 'input-infos"><span>' +
+                    ((!l) ? (lg[fieldName] ? lg[fieldName] : fieldName) : (lg[l] ? lg[l] : l)) +
+                    '</span></span></label>';
+            });
 
             return t.openModal(title, html)
-            .on(pfx + 'confirm', function(){
-                var $form = $(this).find('form'),
-                    valid = true,
-                    v = {}; // values
+                .on(CONFIRM_EVENT, function () {
+                    var $form = $('form', $(this)),
+                        valid = true,
+                        values = {};
 
-                for(var f in fields){
-                    var $field = $('input[name="'+f+'"]', $form);
+                    $.each(fields, function (fieldName, field) {
+                        var $field = $('input[name="' + fieldName + '"]', $form);
 
-                    v[f] = $.trim($field.val());
+                        values[fieldName] = $.trim($field.val());
 
-                    // Validate value
-                    if(fields[f].required && v[f] === ''){
-                        valid = false;
-                        t.addErrorOnModalField($field, t.lang.required);
-                    } else if(fields[f].pattern && !fields[f].pattern.test(v[f])){
-                        valid = false;
-                        t.addErrorOnModalField($field, fields[f].patternError);
+                        // Validate value
+                        if (field.required && values[fieldName] === '') {
+                            valid = false;
+                            t.addErrorOnModalField($field, t.lang.required);
+                        } else if (field.pattern && !field.pattern.test(values[fieldName])) {
+                            valid = false;
+                            t.addErrorOnModalField($field, field.patternError);
+                        }
+                    });
+
+                    if (valid) {
+                        t.restoreRange();
+
+                        if (cmd(values, fields)) {
+                            t.syncCode();
+                            t.$c.trigger('tbwchange');
+                            t.closeModal();
+                            $(this).off(CONFIRM_EVENT);
+                        }
                     }
-                }
-
-                if(valid){
-                    t.restoreSelection();
-
-                    if(cmd(v, fields)){
-                        t.syncCode();
-                        t.closeModal();
-                        $(this).off(pfx + 'confirm');
-                    }
-                }
-            })
-            .one(pfx + 'cancel', function(){
-                $(this).off(pfx + 'confirm');
-                t.closeModal();
-                t.restoreSelection();
-            });
+                })
+                .one('tbwcancel', function () {
+                    $(this).off(CONFIRM_EVENT);
+                    t.closeModal();
+                });
         },
-        addErrorOnModalField: function($field, err){
-            var pfx = this.o.prefix,
+        addErrorOnModalField: function ($field, err) {
+            var prefix = this.o.prefix,
                 $label = $field.parent();
 
-            $field.on('change keyup', function(){
-                $label.removeClass(pfx + 'input-error');
-            });
+            $field
+                .on('change keyup', function () {
+                    $label.removeClass(prefix + 'input-error');
+                });
+
             $label
-            .addClass(pfx + 'input-error')
-            .find('input+span').append(
-                $('<span/>', {
-                    class: pfx +'msg-error',
-                    text: err
-                })
-            );
+                .addClass(prefix + 'input-error')
+                .find('input+span')
+                .append(
+                    $('<span/>', {
+                        class: prefix + 'msg-error',
+                        text: err
+                    })
+                );
         },
 
 
-
-
-        // Selection management
-        saveSelection: function(){
+        // Range management
+        saveRange: function () {
             var t = this,
-                d = document;
+                documentSelection = t.doc.getSelection();
 
-            t.selection = null;
-            if(window.getSelection){
-                var s = window.getSelection();
-                if(s.getRangeAt && s.rangeCount)
-                    t.selection = s.getRangeAt(0);
-            } else if(d.selection && d.selection.createRange)
-                t.selection = d.selection.createRange();
-        },
-        restoreSelection: function(){
-            var range = this.selection;
-            if(range){
-                if(window.getSelection){
-                    var s = window.getSelection();
-                    s.removeAllRanges();
-                    s.addRange(range);
-                } else if(document.selection && range.select)
-                    range.select();
+            t.range = null;
+
+            if (documentSelection.rangeCount) {
+                var savedRange = t.range = documentSelection.getRangeAt(0),
+                    range = t.doc.createRange(),
+                    rangeStart;
+                range.selectNodeContents(t.$ed[0]);
+                range.setEnd(savedRange.startContainer, savedRange.startOffset);
+                rangeStart = (range + '').length;
+                t.metaRange = {
+                    start: rangeStart,
+                    end: rangeStart + (savedRange + '').length
+                };
             }
         },
+        restoreRange: function () {
+            var t = this,
+                metaRange = t.metaRange,
+                savedRange = t.range,
+                documentSelection = t.doc.getSelection(),
+                range;
 
+            if (!savedRange) {
+                return;
+            }
 
+            if (metaRange && metaRange.start !== metaRange.end) { // Algorithm from http://jsfiddle.net/WeWy7/3/
+                var charIndex = 0,
+                    nodeStack = [t.$ed[0]],
+                    node,
+                    foundStart = false,
+                    stop = false;
 
-        // Return true if must enable Trumbowyg on this mobile device
-        isEnabled: function(){
-            var exprTablet = new RegExp("(iPad|webOS)"),
-                exprMobile = new RegExp("(iPhone|iPod|Android|BlackBerry|Windows Phone|ZuneWP7)"),
-                ua = navigator.userAgent;
+                range = t.doc.createRange();
 
-            return (this.o.tablet === true && exprTablet.test(ua)) || (this.o.mobile === true && exprMobile.test(ua));
+                while (!stop && (node = nodeStack.pop())) {
+                    if (node.nodeType === 3) {
+                        var nextCharIndex = charIndex + node.length;
+                        if (!foundStart && metaRange.start >= charIndex && metaRange.start <= nextCharIndex) {
+                            range.setStart(node, metaRange.start - charIndex);
+                            foundStart = true;
+                        }
+                        if (foundStart && metaRange.end >= charIndex && metaRange.end <= nextCharIndex) {
+                            range.setEnd(node, metaRange.end - charIndex);
+                            stop = true;
+                        }
+                        charIndex = nextCharIndex;
+                    } else {
+                        var cn = node.childNodes,
+                            i = cn.length;
+
+                        while (i > 0) {
+                            i -= 1;
+                            nodeStack.push(cn[i]);
+                        }
+                    }
+                }
+            }
+
+            documentSelection.removeAllRanges();
+            documentSelection.addRange(range || savedRange);
+        },
+        getRangeText: function () {
+            return this.range + '';
+        },
+
+        updateButtonPaneStatus: function () {
+            var t = this,
+                prefix = t.o.prefix,
+                tags = t.getTagsRecursive(t.doc.getSelection().focusNode.parentNode),
+                activeClasses = prefix + 'active-button ' + prefix + 'active';
+
+            $('.' + prefix + 'active-button', t.$btnPane).removeClass(activeClasses);
+            $.each(tags, function (i, tag) {
+                var btnName = t.tagToButton[tag.toLowerCase()],
+                    $btn = $('.' + prefix + btnName + '-button', t.$btnPane);
+
+                if ($btn.length > 0) {
+                    $btn.addClass(activeClasses);
+                } else {
+                    try {
+                        $btn = $('.' + prefix + 'dropdown .' + prefix + btnName + '-dropdown-button', t.$box);
+                        var dropdownBtnName = $btn.parent().data('dropdown');
+                        $('.' + prefix + dropdownBtnName + '-button', t.$box).addClass(activeClasses);
+                    } catch (e) {
+                    }
+                }
+            });
+        },
+        getTagsRecursive: function (element, tags) {
+            var t = this;
+            tags = tags || [];
+
+            var tag = element.tagName;
+            if (tag === 'DIV') {
+                return tags;
+            }
+            if (tag === 'P' && element.style.textAlign !== '') {
+                tags.push(element.style.textAlign);
+            }
+
+            $.each(t.tagHandlers, function (i, tagHandler) {
+                tags = tags.concat(tagHandler(element, t));
+            });
+
+            tags.push(tag);
+
+            return t.getTagsRecursive(element.parentNode, tags);
+        },
+
+        // Plugins
+        initPlugins: function () {
+            var t = this;
+            t.loadedPlugins = [];
+            $.each($.trumbowyg.plugins, function (name, plugin) {
+                if (!plugin.shouldInit || plugin.shouldInit(t)) {
+                    plugin.init(t);
+                    if (plugin.tagHandler) {
+                        t.tagHandlers.push(plugin.tagHandler);
+                    }
+                    t.loadedPlugins.push(plugin);
+                }
+            });
+        },
+        destroyPlugins: function () {
+            $.each(this.loadedPlugins, function (i, plugin) {
+                if (plugin.destroy) {
+                    plugin.destroy();
+                }
+            });
         }
     };
-})(window, document, jQuery);
+})(navigator, window, document, jQuery);
