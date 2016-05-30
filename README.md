@@ -5,7 +5,7 @@ Rails asset wrapper for [Trumbowyg](https://github.com/Alex-D/Trumbowyg)
 
 This is fork of [trumbowyg_rails](https://github.com/TikiTDO/trumbowyg_rails), because that repository has not been updated a lot of time.
 
-Currently tracking code as of [this change](https://github.com/Alex-D/Trumbowyg/tree/ec11c334d93316f82b6f65ece6f6cfc5af04ca46).
+Currently tracking code as of [this change](https://github.com/Alex-D/Trumbowyg/commit/ec11c334d93316f82b6f65ece6f6cfc5af04ca46).
 
 Installation
 ============
