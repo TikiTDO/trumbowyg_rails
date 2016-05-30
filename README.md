@@ -10,14 +10,13 @@ Installation
 
 1. Configure your Gemfile to use this gem:
 
-        gem 'trumbowyg2-rails'
-
+        gem 'trumbowyg_rails'
 
 2. Require the JavaScript files in `app/assets/javascripts`, after jQuery:
 
         //= require trumbowyg/trumbowyg
 
-   *Optional* - Include any supported language packs from [this list](https://github.com/snvl1993/trumbowyg2-rails/tree/master/vendor/assets/javascripts/trumbowyg/langs):
+   *Optional* - Include any supported language packs from [this list](https://github.com/TikiTDO/trumbowyg-rails/tree/master/vendor/assets/javascripts/trumbowyg/langs):
 
         //= require trumbowyg/langs/fr
 
