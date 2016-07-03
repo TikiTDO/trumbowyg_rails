@@ -14,7 +14,7 @@ Installation
 
 2. Require the JavaScript files in `app/assets/javascripts`, after jQuery:
 
-        //= require trumbowyg/trumbowyg
+        //= require trumbowyg
 
    *Optional* - Include any supported language packs from [this list](https://github.com/TikiTDO/trumbowyg-rails/tree/master/vendor/assets/javascripts/trumbowyg/langs):
 
@@ -22,7 +22,7 @@ Installation
 
 3. Require the Stylesheets in `app/assets/stylesheets`:
 
-        *= require trumbowyg/trumbowyg
+        *= require trumbowyg
 
 Update Instructions
 ===================
