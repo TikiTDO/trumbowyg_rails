@@ -14,15 +14,15 @@ Installation
 
 2. Require the JavaScript files in `app/assets/javascripts`, after jQuery:
 
-        //= require trumbowyg
+        //= require trumbowyg/trumbowyg
 
    *Optional* - Include any supported language packs from [this list](https://github.com/TikiTDO/trumbowyg-rails/tree/master/vendor/assets/javascripts/trumbowyg/langs):
 
-        //= require trumbowyg/langs/fr
+        //= require trumbowyg/vendor/langs/fr
 
 3. Require the Stylesheets in `app/assets/stylesheets`:
 
-        *= require trumbowyg
+        *= require trumbowyg/trumbowyg
 
 Update Instructions
 ===================
@@ -34,7 +34,7 @@ In order to sync this repository with the upstream provider use the following wo
 3. Run `gulp build` to generate the sprite files
 4. Copy as follows from `Trumbowyg` => `trumbowyg2-rails`
 
-        /dist/ui/images/* => /vendor/assets/images/trumbowyg/images
-        /src/ui/sass/* => /vendor/assets/stylesheets/trumbowyg
-        /src/trumbowyg.js => /vendor/assets/javascripts/trumbowyg
-        /src/langs/* => /vendor/assets/javascripts/trumbowyg
+        /dist/ui/images/* => /vendor/assets/images/trumbowyg/vendor/images
+        /src/ui/sass/* => /vendor/assets/stylesheets/trumbowyg/vendor
+        /src/trumbowyg.js => /vendor/assets/javascripts/trumbowyg/vendor
+        /src/langs/* => /vendor/assets/javascripts/trumbowyg/vendor
