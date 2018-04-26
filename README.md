@@ -1,6 +1,8 @@
 Trumbowyg Rails
 ==============
 
+**I no longer maintain this. If someone else wants to keep it up to date and handle releases feel free to file an issue in order to request gem owner access on rubygems**
+
 Rails asset wrapper for [Trumbowyg](https://github.com/Alex-D/Trumbowyg)
 
 Currently tracking code as of [this change](https://github.com/Alex-D/Trumbowyg/commit/ec11c334d93316f82b6f65ece6f6cfc5af04ca46).
